@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <errno.h>
+#include <string.h>
 
 #include <sys/mman.h>
 #include <sys/shm.h>
@@ -268,7 +269,7 @@ int flush_socket() {
     int r = 1;
 
     while (r == 1) {
-        r = recv(sockfd, &c, 1, SO_RCVTIMEO);
+        r = recv(sockfd, &c, 1, MSG_DONTWAIT);
     }
 }
 
@@ -285,11 +286,20 @@ int get_exec_info() {
 
     for (;;) {
 
-        r = recv(sockfd, buff, 1, 0);
-        if (r != 1){
-            fprintf(logfd, "get_exec_info: Error on recv\n");
-            fflush(logfd);
-            return(EXEC_ERR);
+        // afl_ghidra_bridge doesn't currently have a mechanism for telling the emulator that a
+        // timeout has occurred, so we just keep waiting for the emulator to finish otherwise we
+        // will desync.
+        while(1) {
+            r = recv(sockfd, buff, 1, 0);
+            if (r == -1 && errno == EAGAIN) {
+                continue;
+            }
+            if (r != 1){
+                fprintf(logfd, "get_exec_info: Error on recv, r=%x, errno=%s\n", r, strerror(errno));
+                fflush(logfd);
+                return(EXEC_ERR);
+            }
+            break;
         }
 
         switch (buff[0]) {
