@@ -517,7 +517,7 @@ int main(int argc, char *argv[]) {
   int res_exec = 0;
 
   // log to log
-  logfd = fopen("./afl_bridge_external.log", "a");
+  logfd = fopen("./var/afl_bridge_external.log", "a");
   if (logfd == 0) {
       fprintf(stderr, "Error open log file\n");
       goto END_MAIN;
